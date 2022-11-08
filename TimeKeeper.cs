@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Xna.Framework.Graphics;
+using System;
 using System.Collections.Generic;
 using Terraria.ModLoader;
 using Terraria.UI;
@@ -8,7 +9,7 @@ namespace FasterUI;
 internal class TimeKeeper : ModSystem
 {
 	/// <summary>
-	/// Amount of time in seconds between the last frame and current frame
+	/// Amount of time in seconds between the last frame and current frame (DrawInventory call)
 	/// </summary>
 	internal static double InventoryDeltaTime => m_inventoryDeltaTime / 1000.0;
 
@@ -21,6 +22,15 @@ internal class TimeKeeper : ModSystem
 	private static long m_inventoryDeltaTime;
 
 	private static long m_lastInventoryUnixTimeMilli = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+
+
+	/// <summary>
+	/// Amount of time in seconds between the last frame and current frame (DoDraw call)
+	/// </summary>
+	internal static double DoDrawDeltaTime => m_doDrawDeltaTime / 1000.0;
+
+	private static long m_doDrawDeltaTime;
+	private static long m_lastDoDrawUnixTimeMilli = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
 	public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
 	{
@@ -40,4 +50,10 @@ internal class TimeKeeper : ModSystem
 		}
 	}
 
+	public override void PostDrawInterface(SpriteBatch spriteBatch)
+	{
+		var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+		m_doDrawDeltaTime = now - m_lastDoDrawUnixTimeMilli;
+		m_lastDoDrawUnixTimeMilli = now;
+	}
 }

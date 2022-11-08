@@ -9,5 +9,6 @@ public class FasterUI : Mod
 	public override void Load()
 	{
 		InventoryCraftingEdits.ApplyInventoryCraftEdit();
+		QuickStackEdits.ApplyQuickStackEdits();
 	}
 }
