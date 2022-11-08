@@ -41,7 +41,8 @@ internal static class QuickStackEdits
 			}
 
 			// Subtract using time factor as well?
-			c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
+			//c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
+			c.EmitDelegate<Func<int, int>>(one => one * stackSplitMultiplier);
 
 			// Goes to Main.stackCounter++;
 			if (!c.TryGotoPrev(MoveType.After,
@@ -56,7 +57,8 @@ internal static class QuickStackEdits
 
 			// Multiplies by multiplier
 			// Should speed up acceleration??
-			c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
+			//c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
+			c.EmitDelegate<Func<int, int>>(one => one * stackSplitMultiplier);
 
 			// Reposition for next jumps
 			if (!c.TryGotoNext(x => x.MatchAdd()))
