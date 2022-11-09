@@ -14,6 +14,7 @@ internal static class QuickStackEdits
 		{
 			var c = new ILCursor(il);
 
+			Mono.Cecil.FieldReference stackCounterField = null;
 			#region Unused
 			//int local_i_index = -1;
 
@@ -40,16 +41,68 @@ internal static class QuickStackEdits
 				return;
 			}
 
-			// Subtract using time factor as well?
+			// Subtract using time factor as well? - Unused
 			//c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
-			c.EmitDelegate<Func<int, int>>(one => one * stackSplitMultiplier);
+			//c.EmitDelegate<Func<int, int>>(one => one * stackSplitMultiplier);
+
+
+			// Changes stackDelay--; -> stackDelay -= stackCounter / num;
+			// Local variable num computed right before this
+			int numIndex = -1;
+
+			if (!c.TryFindPrev(out _,
+				x => x.MatchBlt(out _) &&
+				x.Previous.MatchLdloc(out numIndex) &&
+				x.Previous.Previous.MatchLdsfld(out stackCounterField)) &&
+				numIndex == -1)
+			{
+				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				return;
+			}
+
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldsfld, stackCounterField);
+
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc_S, (byte)numIndex);
+			// Unused in favour of raw opcodes
+			//c.EmitDelegate<Func<int, /*int,*/ int, int>>((one, /*stackCounter,*/ num) 
+			//	=> one * (Terraria.Main.stackCounter / num)
+			//);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Div);
+
+			// Consumes the previously loaded 1
+			c.Emit(Mono.Cecil.Cil.OpCodes.Mul);
+
+			// >	sub
+			// >	stsfld	int32 Terraria.Main::stackDelay
+
+
+			// Changes stackCounter = 0; -> stackCounter %= num;
+			// Goes to stackCounter = 0;
+			if (!c.TryGotoNext(MoveType.After,
+				x => x.MatchLdcI4(0) &&
+				x.Next.MatchStsfld(stackCounterField)))
+			{
+				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				return;
+			}
+
+			// Computes stackCounter % num;
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldsfld, stackCounterField);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc_S, (byte)numIndex);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Rem);
+
+			// Basically consumes the 0; adds the computed remainder to the loaded 0
+			c.Emit(Mono.Cecil.Cil.OpCodes.Add); 
+
+			// >	stsfld	int32 Terraria.Main::stackCounter
+
 
 			// Goes to Main.stackCounter++;
 			if (!c.TryGotoPrev(MoveType.After,
-				x => x.Previous.MatchLdsfld(out var Main_stackCounter) &&
+				x => x.Previous.MatchLdsfld(stackCounterField) &&
 				x.MatchLdcI4(1) &&
 				x.Next.MatchAdd() &&
-				x.Next.Next.MatchStsfld(Main_stackCounter)))
+				x.Next.Next.MatchStsfld(stackCounterField)))
 			{
 				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
 				return;
