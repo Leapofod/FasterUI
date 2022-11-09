@@ -41,11 +41,6 @@ internal static class QuickStackEdits
 				return;
 			}
 
-			// Subtract using time factor as well? - Unused
-			//c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
-			//c.EmitDelegate<Func<int, int>>(one => one * stackSplitMultiplier);
-
-
 			// Changes stackDelay--; -> stackDelay -= stackCounter / num;
 			// Local variable num computed right before this
 			int numIndex = -1;
@@ -63,10 +58,6 @@ internal static class QuickStackEdits
 			c.Emit(Mono.Cecil.Cil.OpCodes.Ldsfld, stackCounterField);
 
 			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc_S, (byte)numIndex);
-			// Unused in favour of raw opcodes
-			//c.EmitDelegate<Func<int, /*int,*/ int, int>>((one, /*stackCounter,*/ num) 
-			//	=> one * (Terraria.Main.stackCounter / num)
-			//);
 			c.Emit(Mono.Cecil.Cil.OpCodes.Div);
 
 			// Consumes the previously loaded 1
