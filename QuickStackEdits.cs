@@ -9,8 +9,6 @@ internal static class QuickStackEdits
 {
 	private static int stackSplitMultiplier => (int)Math.Max(1, 60 * TimeKeeper.DoDrawDeltaTime);
 
-	internal static int stackDelayTempVar;
-
 	internal static void ApplyQuickStackEdits()
 	{
 		IL.Terraria.Main.DoDraw += (il) =>
@@ -19,20 +17,18 @@ internal static class QuickStackEdits
 
 			Mono.Cecil.FieldReference stackCounterField = null;
 			Mono.Cecil.FieldReference stackDelayField = null;
-			#region Unused
-			//int local_i_index = -1;
+			System.Int32 local_i_index = -1;
 
-			//// Gets the index for the i local variable for for loops
-			//if(!c.TryGotoNext(
-			//	x => x.MatchLdcI4(0) &&
-			//	x.Next.MatchStloc(out local_i_index) &&
-			//	x.Next.Next.MatchBr(out _)) && 
-			//	local_i_index == -1)
-			//{
-			//	ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
-			//	return;
-			//}
-			#endregion
+			// Gets the index for the i local variable for for loops
+			if (!c.TryFindNext(out _,
+				x => x.MatchLdcI4(0) &&
+				x.Next.MatchStloc(out local_i_index) &&
+				x.Next.Next.MatchBr(out _)) &&
+				local_i_index == -1)
+			{
+				LogIL("Main::DoDraw (0)");
+				return;
+			}
 
 			// Goes to Main.stackDelay--;
 			if (!c.TryGotoNext(MoveType.After,
@@ -83,9 +79,9 @@ internal static class QuickStackEdits
 			 *	stackDelay -= stackCounter / num;
 			 *	if (stackDelay < 2)
 			 *	{
-			 *		(A) QuickStackEdits::stackDelayTempVar = 1 - stackDelay;
+			 *		(A) int i = 1 - stackDelay;
 			 *		stackDelay = 2;
-			 *		(M) superFastStack += 1 + QuickStackEdits::stackDelayTempVar;
+			 *		(M) superFastStack += 1 + i;
 			 *	}
 			 */
 
@@ -105,10 +101,12 @@ internal static class QuickStackEdits
 
 			/*
 			 * Adds
-			 *	QuickStackEdits::stackDelayTempVar = 1 - stackDelay;
+			 *	int i = 1 - stackDelay;
 			 */
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4_1);
 			c.Emit(Mono.Cecil.Cil.OpCodes.Ldsfld, stackDelayField);
-			c.EmitDelegate<Action<int>>(stackDelay => stackDelayTempVar = 1 - stackDelay);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Sub);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc, local_i_index);
 
 			/*
 			 * Moves to
@@ -120,7 +118,7 @@ internal static class QuickStackEdits
 				x => x.MatchLdcI4(1) &&
 				x.Previous.MatchLdsfld(out var sFSfld) &&
 				x.Next.MatchAdd() &&
-				x.Next.Next.MatchLdsfld(sFSfld)))
+				x.Next.Next.MatchStsfld(sFSfld)))
 			{
 				LogIL("Main::DoDraw (4)");
 				return;
@@ -130,9 +128,10 @@ internal static class QuickStackEdits
 			 * Changes
 			 *		superFastStack++;
 			 * to
-			 *		superFastStack += 1 + QuickStackEdits::stackDelayTempVar;
+			 *		superFastStack += 1 + i;
 			 */
-			c.EmitDelegate<Func<int, int>>(one => one + stackDelayTempVar);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc, local_i_index);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Add);
 
 
 			/* Changes
@@ -188,64 +187,6 @@ internal static class QuickStackEdits
 				return;
 			}
 
-			#region Unused
-			//// Goes to before stackCounter++;
-			//if (!c.TryGotoPrev(MoveType.Before,
-			//	x => x.MatchLdsfld(out var Main_stackCounter) &&
-			//	x.Next.MatchLdcI4(1) && 
-			//	x.Next.Next.MatchAdd() &&
-			//	x.Next.Next.Next.MatchStsfld(Main_stackCounter)))
-			//{
-			//	ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
-			//	return;
-			//}
-
-			//var loopBeginningLabel = c.DefineLabel();
-			//var loopSkipLabel = c.DefineLabel();
-			//var loopEndLabel = c.DefineLabel();
-
-			//// Define a fod loop -> (int i = 0; i < stackSplitModifier - 1; i++)
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4_0);
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Stloc, local_i_index);
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Br_S, loopSkipLabel);
-			//c.MarkLabel(loopBeginningLabel);
-
-			//if (!c.TryGotoNext(
-			//	x => x.Previous.Previous.MatchLdsfld(out _) &&
-			//	x.Previous.MatchLdloc(out _) &&
-			//	x.MatchBlt(out _)))
-			//{
-			//	ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
-			//	return;
-			//}
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Blt_S, loopEndLabel);
-			//c.Remove();
-
-			//Mono.Cecil.FieldReference stackCounter = null;
-			//if(!c.TryGotoNext(
-			//	x => x.Previous.MatchLdcI4(0) &&
-			//	x.MatchStsfld(out stackCounter)))
-			//{
-			//	ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
-			//	return;
-			//}
-
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Stsfld, stackCounter);
-			//c.MarkLabel(loopEndLabel);
-
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc, local_i_index);
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4_1);
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Add);
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Stloc, local_i_index);
-			//c.MarkLabel(loopSkipLabel);
-
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc, local_i_index);
-			//c.EmitDelegate(() => stackSplitMultiplier);
-			//c.Emit(Mono.Cecil.Cil.OpCodes.Blt_S, loopBeginningLabel);
-
-			//c.Remove();
-			#endregion
-
 			// Goes to Main.mapTime--;
 			if (!c.TryGotoNext(MoveType.After,
 				x => x.MatchLdcI4(1) &&
@@ -269,7 +210,7 @@ internal static class QuickStackEdits
 				return;
 			}
 
-			// Multiplies by delta time correction, doesn't go below 0, doesn't subtract to 0 immediately
+			// Multiplies by delta time correction, doesn't go below 1
 			c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
 		};
 
@@ -298,5 +239,8 @@ internal static class QuickStackEdits
 	private static void LogIL(string msg)
 	{
 		ModContent.GetInstance<FasterUI>().Logger.Error(msg);
+#if DEBUG
+		throw new Exception("💀");
+#endif
 	}
 }
