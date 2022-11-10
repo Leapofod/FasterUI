@@ -1,5 +1,6 @@
 ﻿using MonoMod.Cil;
 using System;
+using System.Reflection;
 using Terraria.ModLoader;
 
 namespace FasterUI;
@@ -8,6 +9,8 @@ internal static class QuickStackEdits
 {
 	private static int stackSplitMultiplier => (int)Math.Max(1, 60 * TimeKeeper.DoDrawDeltaTime);
 
+	internal static int stackDelayTempVar;
+
 	internal static void ApplyQuickStackEdits()
 	{
 		IL.Terraria.Main.DoDraw += (il) =>
@@ -15,6 +18,7 @@ internal static class QuickStackEdits
 			var c = new ILCursor(il);
 
 			Mono.Cecil.FieldReference stackCounterField = null;
+			Mono.Cecil.FieldReference stackDelayField = null;
 			#region Unused
 			//int local_i_index = -1;
 
@@ -33,11 +37,11 @@ internal static class QuickStackEdits
 			// Goes to Main.stackDelay--;
 			if (!c.TryGotoNext(MoveType.After,
 				x => x.MatchLdcI4(1) &&
-				x.Previous.MatchLdsfld(out var Main_stackDelay) &&
+				x.Previous.MatchLdsfld(out stackDelayField) &&
 				x.Next.MatchSub() &&
-				x.Next.Next.MatchStsfld(Main_stackDelay)))
+				x.Next.Next.MatchStsfld(stackDelayField)))
 			{
-				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				LogIL("Main::DoDraw (1)");
 				return;
 			}
 
@@ -51,7 +55,7 @@ internal static class QuickStackEdits
 				x.Previous.Previous.MatchLdsfld(out stackCounterField)) &&
 				numIndex == -1)
 			{
-				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				LogIL("Main::DoDraw (2)");
 				return;
 			}
 
@@ -67,13 +71,86 @@ internal static class QuickStackEdits
 			// >	stsfld	int32 Terraria.Main::stackDelay
 
 
-			// Changes stackCounter = 0; -> stackCounter %= num;
+			/* 
+			 * Changes
+			 *	stackDelay -= stackCounter / num;
+			 *	if (stackDelay < 2)
+			 *	{
+			 *		stackDelay = 2;
+			 *		superFastStack++;
+			 *	}
+			 *	to
+			 *	stackDelay -= stackCounter / num;
+			 *	if (stackDelay < 2)
+			 *	{
+			 *		(A) QuickStackEdits::stackDelayTempVar = 1 - stackDelay;
+			 *		stackDelay = 2;
+			 *		(M) superFastStack += 1 + QuickStackEdits::stackDelayTempVar;
+			 *	}
+			 */
+
+			/*
+			 * Moves to 
+			 *	if (stackDelay < 2)
+			 *	{
+			 *		-->
+			 *		stackDelay = 2;
+			 *		...
+			 */
+			if (!c.TryGotoNext(MoveType.Before, x => x.MatchLdcI4(2) && x.Next.MatchStsfld(stackDelayField)))
+			{
+				LogIL("Main::DoDraw (3)");
+				return;
+			}
+
+			/*
+			 * Adds
+			 *	QuickStackEdits::stackDelayTempVar = 1 - stackDelay;
+			 */
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldsfld, stackDelayField);
+			c.EmitDelegate<Action<int>>(stackDelay => stackDelayTempVar = 1 - stackDelay);
+
+			/*
+			 * Moves to
+			 *		...
+			 *		-> superFastStack++;
+			 *	}
+			 */
+			if (!c.TryGotoNext(MoveType.After,
+				x => x.MatchLdcI4(1) &&
+				x.Previous.MatchLdsfld(out var sFSfld) &&
+				x.Next.MatchAdd() &&
+				x.Next.Next.MatchLdsfld(sFSfld)))
+			{
+				LogIL("Main::DoDraw (4)");
+				return;
+			}
+
+			/* 
+			 * Changes
+			 *		superFastStack++;
+			 * to
+			 *		superFastStack += 1 + QuickStackEdits::stackDelayTempVar;
+			 */
+			c.EmitDelegate<Func<int, int>>(one => one + stackDelayTempVar);
+
+
+			/* Changes
+			 *		...
+			 *	}
+			 *	stackCounter = 0;
+			 * to
+			 *		...
+			 *	}
+			 *	stackCounter %= num;
+			 */
+			
 			// Goes to stackCounter = 0;
 			if (!c.TryGotoNext(MoveType.After,
 				x => x.MatchLdcI4(0) &&
 				x.Next.MatchStsfld(stackCounterField)))
 			{
-				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				LogIL("Main::DoDraw (5)");
 				return;
 			}
 
@@ -95,7 +172,7 @@ internal static class QuickStackEdits
 				x.Next.MatchAdd() &&
 				x.Next.Next.MatchStsfld(stackCounterField)))
 			{
-				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				LogIL("Main::DoDraw (6)");
 				return;
 			}
 
@@ -107,7 +184,7 @@ internal static class QuickStackEdits
 			// Reposition for next jumps
 			if (!c.TryGotoNext(x => x.MatchAdd()))
 			{
-				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				LogIL("Main::DoDraw (7)");
 				return;
 			}
 
@@ -176,7 +253,7 @@ internal static class QuickStackEdits
 				x.Next.MatchSub() &&
 				x.Next.Next.MatchStsfld(Main_mapTime)))
 			{
-				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				LogIL("Main::DoDraw (8)");
 				return;
 			}
 
@@ -188,7 +265,7 @@ internal static class QuickStackEdits
 				x.Next.MatchSub() &&
 				x.Next.Next.MatchStsfld(Main_stackSplit)))
 			{
-				ModContent.GetInstance<FasterUI>().Logger.Error("IL: Can't find correct DoDraw Index");
+				LogIL("Main::DoDraw (9)");
 				return;
 			}
 
@@ -216,5 +293,10 @@ internal static class QuickStackEdits
 			c.EmitDelegate<Func<int, int>>(num => num == 1 ? num : num * stackSplitMultiplier);
 			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc, numIndex);
 		};
+	}
+
+	private static void LogIL(string msg)
+	{
+		ModContent.GetInstance<FasterUI>().Logger.Error(msg);
 	}
 }
