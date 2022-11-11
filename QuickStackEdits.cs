@@ -1,6 +1,5 @@
 ﻿using MonoMod.Cil;
 using System;
-using System.Reflection;
 using Terraria.ModLoader;
 
 namespace FasterUI;
@@ -8,6 +7,9 @@ namespace FasterUI;
 internal static class QuickStackEdits
 {
 	private static int stackSplitMultiplier => (int)Math.Max(1, 60 * TimeKeeper.DoDrawDeltaTime);
+
+	private static int stackSplitDifference => stackSplitMultiplier - Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), stackSplitMultiplier);
+	private static int rightClickLoopIndex;
 
 	internal static void ApplyQuickStackEdits()
 	{
@@ -233,6 +235,116 @@ internal static class QuickStackEdits
 			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc, numIndex);
 			c.EmitDelegate<Func<int, int>>(num => num == 1 ? num : num * stackSplitMultiplier);
 			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc, numIndex);
+		};
+
+		IL.Terraria.UI.ItemSlot.RightClick_ItemArray_int_int += il =>
+		{
+			var c = new ILCursor(il);
+
+			int locPlayerIndex = -1;
+			int locFlagIndex = -1;
+			var loopSkipLabel = c.DefineLabel();
+
+			/*
+			 * Moves cursor to after
+			 *	{
+			 *		bool flag = true;
+			 *		...
+			 */
+			if (!c.TryGotoNext(x => x.MatchLdloc(out locPlayerIndex)) || locPlayerIndex == -1)
+			{
+				LogIL("ItemSlot::RightClick (0)");
+				return;
+			}
+
+			if (!c.TryGotoNext(MoveType.After,
+				x => x.MatchStloc(out locFlagIndex) &&
+				x.Previous.MatchLdcI4(1) &&
+				locFlagIndex != locPlayerIndex))
+			{
+				LogIL("ItemSlot::RightClick (1)");
+				return;
+			}
+
+			c.EmitDelegate(() => { rightClickLoopIndex = 0; });
+
+			/*
+			 * Moves cursor to before first condition in
+			 *	if (flag && (Main.mouseItem.IsTheSameAs(inv[slot]) && 
+			 *		ItemLoader.CanStack(Main.mouseItem, inv[slot]) || 
+			 *		Main.mouseItem.type == 0) && 
+			 *		(Main.mouseItem.stack < Main.mouseItem.maxStack || 
+			 *		Main.mouseItem.type == 0))
+			 */
+			if (!c.TryGotoNext(MoveType.Before, 
+				x => x.MatchLdloc(locFlagIndex) && 
+				x.Next.MatchBrfalse(out loopSkipLabel)))
+			{
+				LogIL("ItemSlot::RightClick (2)");
+				return;
+			}
+			var loopStartLabel = c.MarkLabel();
+
+			/*
+			 * Goes to after the call to
+			 *	{
+			 *		PickupItemIntoMouse(inv, context, slot, player);
+			 *		...
+			 */
+			if (!c.TryGotoNext(MoveType.After,
+				x => x.MatchCall(out _) &&
+				x.Previous.MatchLdloc(locPlayerIndex) &&
+				x.Previous.Previous.MatchLdarg(out _) &&
+				x.Previous.Previous.Previous.MatchLdarg(out _) &&
+				x.Previous.Previous.Previous.Previous.MatchLdarg(out _)))
+			{
+				LogIL("ItemSlot::RightClick (3)");
+				return;
+			}
+
+			/*
+			 * Jumps to start of the loop if not on first iteration and conditions are met
+			 */
+			c.EmitDelegate(() =>
+			{
+				rightClickLoopIndex++;
+				return rightClickLoopIndex > 1 &&
+					Terraria.Main.superFastStack > 0 &&
+					rightClickLoopIndex <= stackSplitDifference;
+			});
+			c.Emit(Mono.Cecil.Cil.OpCodes.Brtrue, loopStartLabel);
+
+			/*
+			 * Breaks out of loop if on last iteration and isn't on first iteration 
+			 */
+			c.EmitDelegate(() =>
+				rightClickLoopIndex > 1 &&
+				rightClickLoopIndex > stackSplitDifference &&
+				Terraria.Main.superFastStack > 0);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Brtrue, loopSkipLabel);
+
+			/* Goes to after the call to
+			 *		...
+			 *		RefreshStackSplitCooldown();
+			 *	}
+			 * 
+			 */
+			if (!c.TryGotoNext(MoveType.After, 
+				x => x.MatchCall(out _) && x.Previous.MatchPop()))
+			{
+				LogIL("ItemSlot::RightClick (4)");
+				return;
+			}
+
+			/*
+			 * Jumps to start of loop if it's the first iteration and conditions are met
+			 */
+			c.EmitDelegate(()
+				=> Terraria.Main.superFastStack > 0 &&
+				rightClickLoopIndex <= stackSplitDifference);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Brtrue, loopStartLabel);
+
+			//c.MarkLabel(loopSkipLabel);
 		};
 	}
 
