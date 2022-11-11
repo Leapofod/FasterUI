@@ -346,6 +346,21 @@ internal static class QuickStackEdits
 
 			//c.MarkLabel(loopSkipLabel);
 		};
+
+		On.Terraria.Main.HoverOverCraftingItemButton += (On.Terraria.Main.orig_HoverOverCraftingItemButton orig, int recipeIndex) =>
+		{
+			orig(recipeIndex);
+			for (int i = 0; i < stackSplitDifference && Terraria.Main.superFastStack > 0; i++)
+			{
+				var prevRec = Terraria.Main.availableRecipe[recipeIndex];
+				Terraria.Recipe.FindRecipes();
+				if (Terraria.Main.availableRecipe.Length < recipeIndex ||
+					Terraria.Main.availableRecipe[recipeIndex] != prevRec)
+					break;
+				Terraria.Main.stackSplit = 1;
+				orig(recipeIndex);
+			}
+		};
 	}
 
 	private static void LogIL(string msg)
