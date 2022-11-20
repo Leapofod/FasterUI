@@ -19,7 +19,7 @@ internal static class QuickStackEdits
 
 			Mono.Cecil.FieldReference stackCounterField = null;
 			Mono.Cecil.FieldReference stackDelayField = null;
-			System.Int32 local_i_index = -1;
+			int local_i_index = -1;
 
 			// Gets the index for the i local variable for for loops
 			if (!c.TryFindNext(out _,
@@ -108,7 +108,7 @@ internal static class QuickStackEdits
 			c.Emit(Mono.Cecil.Cil.OpCodes.Ldc_I4_1);
 			c.Emit(Mono.Cecil.Cil.OpCodes.Ldsfld, stackDelayField);
 			c.Emit(Mono.Cecil.Cil.OpCodes.Sub);
-			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc, local_i_index);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc_S, (byte)local_i_index);
 
 			/*
 			 * Moves to
@@ -132,7 +132,7 @@ internal static class QuickStackEdits
 			 * to
 			 *		superFastStack += 1 + i;
 			 */
-			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc, local_i_index);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc_S, (byte)local_i_index);
 			c.Emit(Mono.Cecil.Cil.OpCodes.Add);
 
 
@@ -232,9 +232,9 @@ internal static class QuickStackEdits
 				return;
 			}
 
-			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc, numIndex);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Ldloc_S, (byte)numIndex);
 			c.EmitDelegate<Func<int, int>>(num => num == 1 ? num : num * stackSplitMultiplier);
-			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc, numIndex);
+			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc_S, (byte)numIndex);
 		};
 
 		IL.Terraria.UI.ItemSlot.RightClick_ItemArray_int_int += il =>
@@ -367,7 +367,7 @@ internal static class QuickStackEdits
 	{
 		ModContent.GetInstance<FasterUI>().Logger.Error(msg);
 #if DEBUG
-		throw new Exception("💀");
+		throw new Exception("Debug Exception: " + msg);
 #endif
 	}
 }
