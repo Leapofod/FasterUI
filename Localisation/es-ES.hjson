@@ -1,7 +1,7 @@
 ﻿Mods: {
 	FasterUI: {
-		# ConfigTitle: Config
+		ConfigTitle: Configuración
 
-		# CraftingScrollMultiplier: Crafting Scroll Speed Multiplier
+		CraftingScrollMultiplier: Multiplicador De Velocidad De Desplazamiento
 	}
 }
