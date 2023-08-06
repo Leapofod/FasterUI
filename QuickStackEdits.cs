@@ -13,7 +13,7 @@ internal static class QuickStackEdits
 
 	internal static void ApplyQuickStackEdits()
 	{
-		IL.Terraria.Main.DoDraw += (il) =>
+		Terraria.IL_Main.DoDraw += (il) =>
 		{
 			var c = new ILCursor(il);
 
@@ -216,7 +216,7 @@ internal static class QuickStackEdits
 			c.EmitDelegate<Func<int, int>>(one => Math.Min(Math.Max(1, Terraria.Main.stackSplit - 1), one * stackSplitMultiplier));
 		};
 
-		IL.Terraria.UI.ItemSlot.HandleShopSlot += il =>
+		Terraria.UI.IL_ItemSlot.HandleShopSlot += il =>
 		{
 			var c = new ILCursor(il);
 			int numIndex = -1;
@@ -237,7 +237,7 @@ internal static class QuickStackEdits
 			c.Emit(Mono.Cecil.Cil.OpCodes.Stloc_S, (byte)numIndex);
 		};
 
-		IL.Terraria.UI.ItemSlot.RightClick_ItemArray_int_int += il =>
+		Terraria.UI.IL_ItemSlot.RightClick_ItemArray_int_int += il =>
 		{
 			var c = new ILCursor(il);
 
@@ -347,7 +347,7 @@ internal static class QuickStackEdits
 			//c.MarkLabel(loopSkipLabel);
 		};
 
-		On.Terraria.Main.HoverOverCraftingItemButton += (On.Terraria.Main.orig_HoverOverCraftingItemButton orig, int recipeIndex) =>
+		Terraria.On_Main.HoverOverCraftingItemButton += (Terraria.On_Main.orig_HoverOverCraftingItemButton orig, int recipeIndex) =>
 		{
 			orig(recipeIndex);
 			for (int i = 0; i < stackSplitDifference && Terraria.Main.superFastStack > 0; i++)

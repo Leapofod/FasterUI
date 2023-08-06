@@ -4,6 +4,3 @@ Currently these include:
 - The scroll speed of the crafting menu
 - The acceleration and speed of crafting items in bulk
 - The acceleration and speed of buying items in bulk or picking up items in bulk with Right click
-
-For further discussions or issues feel free to go to the Discord Server at:
-[c/70B7FC:https://discord.gg/mSvpbSfpmA]

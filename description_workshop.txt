@@ -4,5 +4,3 @@ This mod aims to remove some slowdowns in the game UI that occur when the game l
 - The scroll speed of the crafting menu
 - The acceleration and speed of crafting items in bulk
 - The acceleration and speed of buying items in bulk or picking up items in bulk with Right click
-
-For further discussions or issues feel free to go to the [url=https://discord.gg/mSvpbSfpmA]Discord Server[/url]

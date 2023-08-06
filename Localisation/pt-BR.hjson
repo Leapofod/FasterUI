@@ -1,7 +1,14 @@
-﻿Mods: {
+Mods: {
 	FasterUI: {
-		ConfigTitle: Config
+		Configs: {
+			FasterUIConfig: {
+				DisplayName: Config
 
-		CraftingScrollMultiplier: Pergaminho de Aumento de Velocidade de Construção
+				CraftingScrollMultiplier: {
+					Label: Pergaminho de Aumento de Velocidade de Construção
+					Tooltip: ""
+				}
+			}
+		}
 	}
 }

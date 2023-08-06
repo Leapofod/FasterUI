@@ -1,5 +1,5 @@
 displayName = Faster UI
 author = Leapofod
-version = 1.0
+version = 1.0.1
 side = Client
 buildIgnore = *.aseprite, *.sln

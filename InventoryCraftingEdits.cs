@@ -8,7 +8,7 @@ internal static class InventoryCraftingEdits
 {
 	internal static void ApplyInventoryCraftEdit()
 	{
-		IL.Terraria.Main.DrawInventory += CraftScrollFix;
+		Terraria.IL_Main.DrawInventory += CraftScrollFix;
 	}
 
 	private static void CraftScrollFix(ILContext il)

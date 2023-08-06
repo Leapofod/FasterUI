@@ -1,7 +1,14 @@
-﻿Mods: {
+Mods: {
 	FasterUI: {
-		ConfigTitle: Config
+		Configs: {
+			FasterUIConfig: {
+				DisplayName: Config
 
-		CraftingScrollMultiplier: Crafting Scroll Speed Multiplier
+				CraftingScrollMultiplier: {
+					Label: Crafting Scroll Speed Multiplier
+					Tooltip: ""
+				}
+			}
+		}
 	}
 }
